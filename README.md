@@ -44,17 +44,3 @@ The main objective is to apply **Principal Component Analysis (PCA)** to handle 
 - Demonstrated that PCA helps in handling **feature collinearity and redundancy** effectively.  
 
 ---
-
-## 📂 Repository Structure  
-```
-├── DA_Assignment_2.ipynb   # Jupyter notebook with full code & outputs
-├── README.md               # Project documentation (this file)
-└── data/                   # Mushroom dataset (not included, load externally)
-```
-
----
-
-## 📝 Author  
-**Aravindhan Mohanraj**  
-Roll No: **DA25S006**  
-DA Assignment 2
