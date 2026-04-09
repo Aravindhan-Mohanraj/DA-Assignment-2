@@ -1,0 +1,31 @@
+"""Classification components
+"""
+
+import torch
+import torch.nn as nn
+
+from .vgg11 import VGG11Encoder
+
+
+class VGG11Classifier(nn.Module):
+    """Full classifier = VGG11Encoder + ClassificationHead."""
+
+    def __init__(self, num_classes: int = 37, in_channels: int = 3, dropout_p: float = 0.5):
+        """
+        Initialize the VGG11Classifier model.
+        Args:
+            num_classes: Number of output classes.
+            in_channels: Number of input channels.
+            dropout_p: Dropout probability for the classifier head.
+        """
+        super().__init__()
+        self.backbone = VGG11Encoder(in_channels=in_channels, num_classes=num_classes, dropout_p=dropout_p)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass for classification model.
+        Args:
+            x: Input tensor of shape [B, in_channels, H, W].
+        Returns:
+            Classification logits [B, num_classes].
+        """
+        return self.backbone(x)
