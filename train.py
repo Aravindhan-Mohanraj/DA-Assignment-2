@@ -274,7 +274,7 @@ def run_classification(args):
     if args.use_wandb:
         wandb.init(project=args.wandb_project, name="task1-classifier", entity=WANDB_ENTITY, config=vars(args), reinit=True)
 
-    dl_trn, dl_val, dl_tst = create_dataloaders(args)
+    dl_trn, dl_val, dl_tst = create_dataloaders(args, with_aug=not getattr(args, "no_aug", False))
 
     net = VGG11Classifier(num_classes=N_BREEDS, dropout_p=args.dropout_p).to(dev)
     net.apply(apply_kaiming_init)
@@ -832,6 +832,7 @@ def build_args():
     p.add_argument("--seg_classes", type=int, default=3, choices=[1, 3])
     p.add_argument("--seg_patience", type=int, default=20)
 
+    p.add_argument("--no_aug", action="store_true", help="Skip augmented data, use originals only (faster for testing)")
     p.add_argument("--wandb_project", type=str, default="DA6402-Assignment-2_v1")
     p.add_argument("--use_wandb", action="store_true")
 
