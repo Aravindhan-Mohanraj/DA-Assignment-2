@@ -1,3 +1,11 @@
 data/oxford-iiit-pet/
 dumb.zip
 checkpoints/
+
+wandb/
+
+backup_checkpoints/
+models/__pycache__/
+losses/__pycache__/
+data/__pycache__/
+__pycache__/
