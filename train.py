@@ -289,7 +289,7 @@ def run_classification(args):
     top_f1, top_ep = 0.0, 0
     wait = 0
     max_wait = getattr(args, "clf_patience", 25)
-    amp_scaler = torch.amp.GradScaler("cuda")
+    amp_scaler = torch.cuda.amp.GradScaler()
 
     for ep in range(1, args.clf_epochs + 1):
         net.train()
@@ -306,7 +306,7 @@ def run_classification(args):
             batch_img, ta, tb = batch_img.to(dev), ta.to(dev), tb.to(dev)
             optim.zero_grad()
 
-            with torch.amp.autocast("cuda"):
+            with torch.cuda.amp.autocast():
                 out = net(batch_img)
                 loss = compute_mixup_loss(loss_fn, out, ta, tb, lam)
 
@@ -418,7 +418,7 @@ def run_localization(args):
     iou_crit = IoULoss(reduction="mean")
 
     use_amp = (dev.type == "cuda")
-    amp_scaler = torch.amp.GradScaler("cuda") if use_amp else None
+    amp_scaler = torch.cuda.amp.GradScaler() if use_amp else None
 
     s1_end = getattr(args, "loc_stage1", 10)
     s2_end = s1_end + getattr(args, "loc_stage2", 5)
@@ -467,7 +467,7 @@ def run_localization(args):
             optim.zero_grad(set_to_none=True)
 
             if use_amp:
-                with torch.amp.autocast("cuda"):
+                with torch.cuda.amp.autocast():
                     pred = net(b_img)
                     l_reg = smooth_l1(pred, b_box)
                     l_iou = iou_crit(pred, b_box)
@@ -502,7 +502,7 @@ def run_localization(args):
             for b_img, _, b_box, _ in dl_val:
                 b_img, b_box = b_img.to(dev), b_box.to(dev)
                 if use_amp:
-                    with torch.amp.autocast("cuda"):
+                    with torch.cuda.amp.autocast():
                         vp = net(b_img)
                         lr_ = smooth_l1(vp, b_box)
                         li_ = iou_crit(vp, b_box)
@@ -557,12 +557,12 @@ def _seg_forward_loss(model, images, masks, ce_fn, nc, use_amp, device):
     """Shared forward + loss computation for segmentation (avoids code duplication)."""
     images, masks = images.to(device), masks.to(device)
 
-    ctx = torch.amp.autocast("cuda") if use_amp else torch.no_grad.__class__()
+    ctx = torch.cuda.amp.autocast() if use_amp else torch.no_grad.__class__()
     if not use_amp:
         # No-op context for non-amp
         logits = model(images)
     else:
-        with torch.amp.autocast("cuda"):
+        with torch.cuda.amp.autocast():
             logits = model(images)
 
     if nc == 1:
@@ -597,7 +597,7 @@ def run_segmentation(args):
     transfer_encoder_weights(net, CLF_CKPT, enc_name="encoder")
 
     use_amp = (dev.type == "cuda")
-    amp_scaler = torch.amp.GradScaler("cuda") if use_amp else None
+    amp_scaler = torch.cuda.amp.GradScaler() if use_amp else None
 
     if nc == 1:
         ce_fn = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([3.0]).to(dev))
@@ -635,7 +635,7 @@ def run_segmentation(args):
             b_img, b_msk = b_img.to(dev), b_msk.to(dev)
 
             if use_amp:
-                with torch.amp.autocast("cuda"):
+                with torch.cuda.amp.autocast():
                     logits = net(b_img)
                     if nc == 1:
                         tgt = (b_msk != 1).float()
@@ -684,7 +684,7 @@ def run_segmentation(args):
             for b_img, _, _, b_msk in dl_val:
                 b_img, b_msk = b_img.to(dev), b_msk.to(dev)
                 if use_amp:
-                    with torch.amp.autocast("cuda"):
+                    with torch.cuda.amp.autocast():
                         logits = net(b_img)
                         if nc == 1:
                             tgt = (b_msk != 1).float()
@@ -755,7 +755,7 @@ def run_segmentation(args):
         for b_img, _, _, b_msk in dl_tst:
             b_img, b_msk = b_img.to(dev), b_msk.to(dev)
             if use_amp:
-                with torch.amp.autocast("cuda"):
+                with torch.cuda.amp.autocast():
                     logits = net(b_img)
                     if nc == 1:
                         tgt = (b_msk != 1).float()
