@@ -23,6 +23,9 @@ from torch.utils.data import DataLoader
 
 import wandb
 
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "models"))
 
 
@@ -30,7 +33,7 @@ def safe_torch_load(path, map_location=None):
     """Load checkpoint with weights_only=True when supported (PyTorch >= 1.13)."""
     _ver = tuple(int(x) for x in torch.__version__.split(".")[:2] if x.isdigit())
     if _ver >= (1, 13):
-        return safe_torch_load(path, map_location=map_location)
+        return torch.load(path, map_location=map_location, weights_only=True)
     return torch.load(path, map_location=map_location)
 
 from models.classification import VGG11Classifier
@@ -280,7 +283,7 @@ def run_classification(args):
     dev = args.device
 
     if args.use_wandb:
-        wandb.init(project=args.wandb_project, name="task1-classifier", entity=WANDB_ENTITY, config=vars(args), reinit=True)
+        wandb.init(project=args.wandb_project, name="classifier_v3", entity=WANDB_ENTITY, config=vars(args), reinit=True)
 
     dl_trn, dl_val, dl_tst = create_dataloaders(args, with_aug=not getattr(args, "no_aug", False))
 
