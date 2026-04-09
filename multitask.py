@@ -1,40 +1,27 @@
-"""Unified multi-task model
+"""Unified multi-task model (root-level for autograder import)
+
+The autograder does: from multitask import MultiTaskPerceptionModel
 """
 
 import os
 import torch
 import torch.nn as nn
 
-from .classification import VGG11Classifier
-from .localization import VGG11Localizer
-from .segmentation import VGG11UNet
+from models.classification import VGG11Classifier
+from models.localization import VGG11Localizer
+from models.segmentation import VGG11UNet
 
 
 IMG_DIM = 224
 
-# Google Drive file IDs for checkpoint download
-_DRIVE_IDS = {
-    "clf": "<classifier.pth drive id>",
-    "loc": "<localizer.pth drive id>",
-    "seg": "<unet.pth drive id>",
-}
 
-
-def _fetch_if_missing(filepath, drive_id):
-    """Download checkpoint from Google Drive if not already on disk."""
-    if os.path.exists(filepath):
-        return
-    try:
-        import gdown
-        print(f"  Fetching {filepath} from Drive ...")
-        gdown.download(id=drive_id, output=filepath, quiet=False)
-    except Exception as err:
-        print(f"  Download failed for {filepath}: {err}")
-
-
-def _read_checkpoint(path, device="cpu"):
-    """Load a .pth file, unwrapping state_dict wrapper if present."""
-    data = torch.load(path, map_location=device, weights_only=True)
+def _safe_load(path, device="cpu"):
+    """Load checkpoint, handling both raw state_dict and wrapper formats."""
+    _ver = tuple(int(x) for x in torch.__version__.split(".")[:2] if x.isdigit())
+    if _ver >= (1, 13):
+        data = torch.load(path, map_location=device, weights_only=True)
+    else:
+        data = torch.load(path, map_location=device)
     if isinstance(data, dict) and "state_dict" in data:
         return data["state_dict"]
     return data
@@ -43,15 +30,14 @@ def _read_checkpoint(path, device="cpu"):
 class MultiTaskPerceptionModel(nn.Module):
     """Shared-backbone multi-task model."""
 
-    def __init__(self, num_breeds: int = 37, seg_classes: int = 3, in_channels: int = 3, classifier_path: str = "checkpoints/classifier.pth", localizer_path: str = "checkpoints/localizer.pth", unet_path: str = "checkpoints/unet_3.pth"):
+    def __init__(self, num_breeds: int = 37, seg_classes: int = 3, in_channels: int = 3, classifier_path: str = "checkpoints/classifier.pth", localizer_path: str = "checkpoints/localizer.pth", unet_path: str = "checkpoints/unet.pth"):
+        import gdown
+        gdown.download(id="<classifier.pth drive id>", output=classifier_path, quiet=False)
+        gdown.download(id="<localizer.pth drive id>", output=localizer_path, quiet=False)
+        gdown.download(id="<unet.pth drive id>", output=unet_path, quiet=False)
+
         super().__init__()
-
         self.img_sz = IMG_DIM
-
-        # Download checkpoints if needed
-        _fetch_if_missing(classifier_path, _DRIVE_IDS["clf"])
-        _fetch_if_missing(localizer_path, _DRIVE_IDS["loc"])
-        _fetch_if_missing(unet_path, _DRIVE_IDS["seg"])
 
         # Instantiate the three task models
         self.cls_net = VGG11Classifier(num_classes=num_breeds, dropout_p=0.5)
@@ -67,13 +53,10 @@ class MultiTaskPerceptionModel(nn.Module):
         if not os.path.exists(ckpt_path):
             print(f"  [{tag}] checkpoint missing: {ckpt_path} — using random init")
             return
-        weights = _read_checkpoint(ckpt_path)
+        weights = _safe_load(ckpt_path)
         if isinstance(weights, dict) and "state_dict" in weights:
             weights = weights["state_dict"]
-
-        # Strip DataParallel prefix if present
         clean = {k.replace("module.", ""): v for k, v in weights.items()}
-
         missing, unexpected = model.load_state_dict(clean, strict=False)
         print(f"  [{tag}] loaded | missing={len(missing)} unexpected={len(unexpected)}")
 

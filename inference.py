@@ -31,6 +31,15 @@ from models.classification import VGG11Classifier
 from models.localization import VGG11Localizer
 from models.segmentation import VGG11UNet
 
+
+def safe_torch_load(path, map_location=None):
+    """Load checkpoint with weights_only=True when supported (PyTorch >= 1.13)."""
+    _ver = tuple(int(x) for x in torch.__version__.split(".")[:2] if x.isdigit())
+    if _ver >= (1, 13):
+        return safe_torch_load(path, map_location=map_location)
+    return torch.load(path, map_location=map_location)
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Constants
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -66,7 +75,7 @@ def _blend_mask(img_float, mask_np, alpha=0.5):
 
 def _load_ckpt(model, ckpt_path, device):
     if os.path.exists(ckpt_path):
-        sd = torch.load(ckpt_path, map_location=device, weights_only=True)
+        sd = safe_torch_load(ckpt_path, map_location=device)
         model.load_state_dict(sd["state_dict"] if "state_dict" in sd else sd)
         print(f"  Loaded {ckpt_path}")
     else:

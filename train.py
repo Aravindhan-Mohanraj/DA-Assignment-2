@@ -25,6 +25,14 @@ import wandb
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "models"))
 
+
+def safe_torch_load(path, map_location=None):
+    """Load checkpoint with weights_only=True when supported (PyTorch >= 1.13)."""
+    _ver = tuple(int(x) for x in torch.__version__.split(".")[:2] if x.isdigit())
+    if _ver >= (1, 13):
+        return safe_torch_load(path, map_location=map_location)
+    return torch.load(path, map_location=map_location)
+
 from models.classification import VGG11Classifier
 from models.localization import VGG11Localizer
 from models.segmentation import VGG11UNet
@@ -43,7 +51,7 @@ os.makedirs("checkpoints", exist_ok=True)
 CLF_CKPT = os.path.join("checkpoints", "classifier.pth")
 LOC_CKPT = os.path.join("checkpoints", "localizer.pth")
 SEG_CKPT = os.path.join("checkpoints", "unet")
-WANDB_ENTITY = "da25s003-indian-institute-of-technology-madras"
+WANDB_ENTITY = "da25s006-indian-institute-of-technology-madras"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -74,7 +82,7 @@ def transfer_encoder_weights(target_model, clf_ckpt_path, enc_name="encoder"):
     if not os.path.exists(clf_ckpt_path):
         print(f"  [transfer] {clf_ckpt_path} not found — random init")
         return
-    raw = torch.load(clf_ckpt_path, map_location="cpu", weights_only=True)
+    raw = safe_torch_load(clf_ckpt_path, map_location="cpu")
     sd = raw.get("state_dict", raw)
     # Extract only encoder conv block weights (prefixed with "backbone.block")
     prefix = "backbone."
@@ -369,7 +377,7 @@ def run_classification(args):
                 break
 
     # test with best checkpoint
-    best_sd = torch.load(CLF_CKPT, map_location=dev, weights_only=True)
+    best_sd = safe_torch_load(CLF_CKPT, map_location=dev)
     net.load_state_dict(best_sd["state_dict"])
     net.eval()
     te_loss = 0.0
@@ -746,7 +754,7 @@ def run_segmentation(args):
                 break
 
     # test
-    ckpt = torch.load(SEG_CKPT + "_" + str(args.seg_classes) + ".pth", map_location=dev, weights_only=True)
+    ckpt = safe_torch_load(SEG_CKPT + "_" + str(args.seg_classes) + ".pth", map_location=dev)
     net.load_state_dict(ckpt["state_dict"])
     net.eval()
     te_loss = 0.0
